@@ -22,7 +22,7 @@ public class WithdrawalQueryController {
 
     @GetMapping
     ResponseEntity<List<WithdrawalDto>> withdrawals(@PathParam("cardId") String cardId) {
-        return ResponseEntity.ok().body(withdrawalQueryService.withdrawal(UUID.fromString(cardId)));
+        return ResponseEntity.ok().body(withdrawalQueryService.withdraw(UUID.fromString(cardId)));
     }
 
 

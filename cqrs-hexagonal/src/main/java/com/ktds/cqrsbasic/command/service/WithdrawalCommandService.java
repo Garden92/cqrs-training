@@ -2,11 +2,12 @@ package com.ktds.cqrsbasic.command.service;
 
 import java.util.UUID;
 
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ktds.cqrsbasic.command.repository.CreditCardCommandRepository;
+import com.ktds.cqrsbasic.adapter.out.persistence.CreditCardJdbcRepository;
+import com.ktds.cqrsbasic.command.event.CardWithdraw;
 import com.ktds.cqrsbasic.command.repository.entity.CreditCard;
 
 import lombok.RequiredArgsConstructor;
@@ -16,18 +17,18 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class WithdrawalCommandService {
-    private final CreditCardCommandRepository creditCardRepository;
-    private final JdbcTemplate jdbcTemplate;
-
+    private final CreditCardJdbcRepository creditCardRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public void withdraw(UUID cardId, long amount) {
         CreditCard creditCard = creditCardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalStateException("Cannot find card with id " + cardId));
-        withdraw(creditCard, amount);
+        CardWithdraw event = withdraw(creditCard, amount);
+        applicationEventPublisher.publishEvent(event);
     }
 
-    public void withdraw(CreditCard creditCard, long amount) {
+	public CardWithdraw withdraw(CreditCard creditCard, long amount) {
 		if (thereIsMoneyToWithdraw(creditCard, amount)) {
 			creditCard.setUsedLimit(creditCard.getUsedLimit() + amount);
 			log.info("creditCard = {}", creditCard);
@@ -35,6 +36,8 @@ public class WithdrawalCommandService {
 		} else {
 			throw new NotEnoughMoneyException(creditCard.getId(), amount, availableBalance(creditCard));
 		}
+
+		return new CardWithdraw(creditCard.getId(), amount);
 	}
 
 	public long availableBalance(CreditCard creditCard) {
