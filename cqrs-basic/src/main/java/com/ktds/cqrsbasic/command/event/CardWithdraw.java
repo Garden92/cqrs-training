@@ -1,9 +1,6 @@
-package com.ktds.cqrsbasic.query.repository.entity;
+package com.ktds.cqrsbasic.command.event;
 
 import java.util.UUID;
-
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,10 +15,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-@Table("WITHDRAWAL")
-public class Withdrawal {
-    @Id
-    private UUID id;
+public class CardWithdraw {
+    private UUID cardNo;
     private long amount;
-    private UUID cardId;
 }

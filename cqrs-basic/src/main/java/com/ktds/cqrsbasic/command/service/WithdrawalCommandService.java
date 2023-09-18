@@ -1,15 +1,14 @@
 package com.ktds.cqrsbasic.command.service;
 
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ktds.cqrsbasic.command.event.CardWithdraw;
 import com.ktds.cqrsbasic.command.repository.CreditCardCommandRepository;
-import com.ktds.cqrsbasic.command.repository.WithdrawalCommandRepository;
 import com.ktds.cqrsbasic.command.repository.entity.CreditCard;
-import com.ktds.cqrsbasic.command.repository.entity.Withdrawal;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,23 +18,26 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class WithdrawalCommandService {
     private final CreditCardCommandRepository creditCardRepository;
-	private final WithdrawalCommandRepository withdrawalRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-	@Transactional
-	public void withdraw(UUID cardId, long amount) {
-		CreditCard creditCard = creditCardRepository.findById(cardId)
-				.orElseThrow(() -> new IllegalStateException("Cannot find card with id " + cardId));
-		withdraw(creditCard, amount);
-	}
+    @Transactional
+    public void withdraw(UUID cardId, long amount) {
+        CreditCard creditCard = creditCardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalStateException("Cannot find card with id " + cardId));
+        CardWithdraw event = withdraw(creditCard, amount);
+        applicationEventPublisher.publishEvent(event);
+    }
 
-	public void withdraw(CreditCard creditCard, long amount) {
+	public CardWithdraw withdraw(CreditCard creditCard, long amount) {
 		if (thereIsMoneyToWithdraw(creditCard, amount)) {
 			creditCard.setUsedLimit(creditCard.getUsedLimit() + amount);
+			log.info("creditCard = {}", creditCard);
 			creditCardRepository.save(creditCard);
-			withdrawalRepository.save(Withdrawal.newWithdrawal(UUID.randomUUID(), amount, creditCard.getId()));
 		} else {
 			throw new NotEnoughMoneyException(creditCard.getId(), amount, availableBalance(creditCard));
 		}
+
+		return new CardWithdraw(creditCard.getId(), amount);
 	}
 
 	public long availableBalance(CreditCard creditCard) {
@@ -46,7 +48,4 @@ public class WithdrawalCommandService {
 		return availableBalance(creditCard) >= amount;
 	}
 
-	public List<Withdrawal> withdraw(UUID cardId) {
-		return withdrawalRepository.findByCardId(cardId);
-	}
 }
